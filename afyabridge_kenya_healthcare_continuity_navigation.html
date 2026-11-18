@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AfyaBridge Kenya — Hospital-to-Home Continuity & SHA Readiness</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    /* Subtle scrollbar for clean medical aesthetic */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+    .pulse-dot {
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.9; }
+      50% { transform: scale(1.25); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.9; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-800 selection:text-white">
+
+  <!-- Toast / Non-blocking Notification Banner -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Top Navigation & RBAC Role Switcher -->
+  <header class="bg-[#065f46] text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between py-3 gap-3">
+        <!-- Brand Identity -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center shadow-inner">
+              <!-- Cross + Bridge SVG -->
+              <svg class="w-6 h-6 text-emerald-100" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 18c4-4 12-4 16 0" opacity="0.65"/>
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-lg tracking-tight">AfyaBridge</span>
+                <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500 text-slate-950">Kenya</span>
+              </div>
+              <p class="text-xs text-emerald-100/90">Hospital-to-Home Continuity &amp; SHA Readiness Network</p>
+            </div>
+          </div>
+
+          <!-- Active County / Sync Pill on Mobile -->
+          <div class="flex md:hidden items-center gap-1.5 text-xs bg-emerald-900/70 px-2.5 py-1 rounded-full border border-emerald-600/50">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></span>
+            <span>Nairobi / Kajiado</span>
+          </div>
+        </div>
+
+        <!-- Role-Based Access Control (RBAC) Switcher -->
+        <nav aria-label="Role Switcher" class="bg-emerald-950/60 p-1 rounded-xl border border-emerald-700/60 flex flex-wrap sm:flex-nowrap gap-1">
+          <button onclick="switchRole('patient')" id="btn-role-patient"
+            class="role-btn flex-1 sm:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 bg-white text-emerald-950 shadow-sm">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>Patient / Family</span>
+          </button>
+
+          <button onclick="switchRole('hospital')" id="btn-role-hospital"
+            class="role-btn flex-1 sm:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 text-emerald-100 hover:bg-white/10">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+            <span>Hospital Desk</span>
+          </button>
+
+          <button onclick="switchRole('chp')" id="btn-role-chp"
+            class="role-btn flex-1 sm:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 text-emerald-100 hover:bg-white/10 relative">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>CHP Follow-Up</span>
+            <span id="chp-badge-count" class="ml-0.5 px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-amber-500 text-slate-950">3</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Context Status Strip -->
+  <div class="bg-emerald-900/5 border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+          <span id="active-role-label">Active View: Patient &amp; Family Navigation Portal</span>
+        </span>
+        <span class="hidden sm:inline text-slate-400">|</span>
+        <span id="active-persona-info" class="font-medium text-slate-700">Patient: Mama Grace Wanjiku (SHA ID: KE-SHA-8841920) • Kibra / Lang'ata</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openModal('research-brief-modal')" class="text-emerald-800 hover:text-emerald-950 font-semibold underline decoration-emerald-400 underline-offset-2">
+          System Problem &amp; Field Research Brief
+        </button>
+        <span class="text-slate-300">|</span>
+        <span class="font-mono text-[11px] text-slate-500">Sync: Live Shared State</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT WORKSPACE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 1: PATIENT / FAMILY PORTAL                                       -->
+    <!-- ===================================================================== -->
+    <section id="view-patient" class="space-y-6">
+
+      <!-- Top Emergency & SHA Banner -->
+      <div class="bg-gradient-to-r from-[#065f46] to-emerald-800 rounded-2xl p-5 sm:p-6 text-white shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div class="space-y-1.5 max-w-2xl">
+          <div class="inline-flex items-center gap-2 bg-white/15 px-3 py-1 rounded-full text-xs font-semibold text-emerald-100">
+            <span>SHA Social Health Authority • Primary &amp; ECCIF Verified</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Karibu, Mama Grace Wanjiku</h1>
+          <p class="text-sm text-emerald-100/90 leading-relaxed">
+            Check live hospital SHA status, drug stock, and ER queues before paying for a boda or taxi—and track your post-discharge recovery plan with your local CHP.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0">
+          <button onclick="openModal('eccif-card-modal')"
+            class="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 active:scale-[0.99] text-slate-950 font-bold text-sm px-4 py-3 rounded-xl shadow-lg flex items-center justify-center gap-2 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>1-Tap ECCIF Emergency Rights Card</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Two-Column Core Patient Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN (7 cols): Unified Digital Discharge & Home Care Plan -->
+        <div class="lg:col-span-7 space-y-6">
+
+          <!-- Active Discharge Care Plan Card -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Active Discharge Plan</span>
+                  <span id="pt-plan-updated-badge" class="text-xs text-slate-500">Updated from Mbagathi County Hospital</span>
+                </div>
+                <h2 id="pt-diagnosis-title" class="text-lg font-bold text-slate-900 mt-1">
+                  Uncontrolled Type 2 Diabetes &amp; Stage 2 Hypertension
+                </h2>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-slate-500">Assigned CHP Follow-Up</p>
+                <p id="pt-assigned-chp" class="text-sm font-bold text-emerald-800">CHP Esther Moraa (Kibra Laini Saba)</p>
+                <p id="pt-followup-date" class="text-xs font-medium text-amber-700">Clinic Review: 24 Nov 2026</p>
+              </div>
+            </div>
+
+            <!-- Clinician Instructions & Home Guidance -->
+            <div class="p-5 space-y-5">
+              <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-900 mb-1">Clinician Discharge Summary &amp; Home Instructions</h3>
+                <p id="pt-clinician-notes" class="text-sm text-slate-700 leading-relaxed">
+                  Monitor fasting blood sugar every morning before breakfast. Take antihypertensive and oral hypoglycemic doses with meals. Reduce salt intake (avoid adding raw salt to ugali/sukuma) and drink 2L clean water daily.
+                </p>
+              </div>
+
+              <!-- Medication Schedule + Local Chemist KES Price Benchmark -->
+              <div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-900">Prescribed Medicines &amp; Fair Chemist Price Guide (KES)</h3>
+                    <p class="text-xs text-slate-500">Tap doses taken today. Compare retail chemist prices to avoid overcharging.</p>
+                  </div>
+                  <span id="med-adherence-pill" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                    0 / 3 Doses Taken Today
+                  </span>
+                </div>
+
+                <div id="patient-meds-list" class="space-y-3">
+                  <!-- Populated dynamically via JS -->
+                </div>
+              </div>
+
+              <!-- Interactive Red-Flag Symptom Checker -->
+              <div class="border-t border-slate-100 pt-5">
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <span class="w-2.5 h-2.5 rounded-full bg-red-600"></span>
+                      Home Danger-Sign &amp; Red-Flag Symptom Checker
+                    </h3>
+                    <p class="text-xs text-slate-500">Select any symptom Mama Grace is experiencing right now at home:</p>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="symptom-checklist">
+                  <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-amber-400 cursor-pointer bg-white transition">
+                    <input type="checkbox" value="Severe headache, blurred vision, or chest tightness" class="symptom-cb mt-0.5 rounded text-emerald-700 focus:ring-emerald-600" onchange="evaluateSymptoms()">
+                    <span class="text-xs font-medium text-slate-700">Severe headache, blurred vision, or chest pain</span>
+                  </label>
+                  <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-amber-400 cursor-pointer bg-white transition">
+                    <input type="checkbox" value="Dizziness, cold sweats, or confusion (Low Sugar)" class="symptom-cb mt-0.5 rounded text-emerald-700 focus:ring-emerald-600" onchange="evaluateSymptoms()">
+                    <span class="text-xs font-medium text-slate-700">Dizziness, cold sweats, or confusion (Hypoglycemia)</span>
+                  </label>
+                  <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-amber-400 cursor-pointer bg-white transition">
+                    <input type="checkbox" value="Swollen feet/ankles or shortness of breath lying down" class="symptom-cb mt-0.5 rounded text-emerald-700 focus:ring-emerald-600" onchange="evaluateSymptoms()">
+                    <span class="text-xs font-medium text-slate-700">Swollen feet/ankles or difficulty breathing</span>
+                  </label>
+                  <label class="flex items-start gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-amber-400 cursor-pointer bg-white transition">
+                    <input type="checkbox" value="Persistent vomiting or inability to keep tablets down" class="symptom-cb mt-0.5 rounded text-emerald-700 focus:ring-emerald-600" onchange="evaluateSymptoms()">
+                    <span class="text-xs font-medium text-slate-700">Persistent vomiting / unable to keep meds down</span>
+                  </label>
+                </div>
+
+                <!-- Dynamic Triage Guidance Box -->
+                <div id="symptom-result-box" class="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between gap-3">
+                  <span>No danger signs selected. Continue scheduled medications and routine CHP home check-in.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transparent SHA & M-Pesa Co-Pay Bill Breakdown -->
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">Transparent SHA &amp; M-Pesa Discharge Bill Estimator</h3>
+                <p class="text-xs text-slate-500">Itemized inpatient/outpatient split under Social Health Insurance Fund (SHIF) &amp; ECCIF</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                SHA Status: Active &amp; Compliant
+              </span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-500 text-xs uppercase">
+                    <th class="py-2 pr-3">Service / Item</th>
+                    <th class="py-2 px-3 text-right">Total Tariff</th>
+                    <th class="py-2 px-3 text-right text-emerald-700">SHA Covers</th>
+                    <th class="py-2 pl-3 text-right font-bold text-slate-900">Patient Co-Pay</th>
+                  </tr>
+                </thead>
+                <tbody id="bill-table-body" class="divide-y divide-slate-100">
+                  <tr>
+                    <td class="py-2.5 pr-3 font-medium text-slate-800">Level 4 Outpatient / Stabilization &amp; Labs (HbA1c, UECs)</td>
+                    <td class="py-2.5 px-3 text-right text-slate-600">KES 4,200</td>
+                    <td class="py-2.5 px-3 text-right text-emerald-700 font-medium">KES 4,200 (100%)</td>
+                    <td class="py-2.5 pl-3 text-right font-semibold text-slate-900">KES 0</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 pr-3 font-medium text-slate-800">Hospital Pharmacy Starter Pack (7 Days)</td>
+                    <td class="py-2.5 px-3 text-right text-slate-600">KES 1,150</td>
+                    <td class="py-2.5 px-3 text-right text-emerald-700 font-medium">KES 900</td>
+                    <td class="py-2.5 pl-3 text-right font-semibold text-slate-900">KES 250</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2.5 pr-3 font-medium text-slate-800">Out-of-Stock Refill (23-Day Chemist Benchmark)</td>
+                    <td class="py-2.5 px-3 text-right text-slate-600" id="bill-chemist-total">KES 1,350</td>
+                    <td class="py-2.5 px-3 text-right text-slate-400">KES 0 (Retail)</td>
+                    <td class="py-2.5 pl-3 text-right font-semibold text-amber-700" id="bill-chemist-copay">KES 1,350</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr class="border-t-2 border-slate-200 bg-slate-50/80 font-bold">
+                    <td class="py-3 pr-3 text-slate-900">Estimated Patient Out-of-Pocket Total</td>
+                    <td class="py-3 px-3 text-right text-slate-600" id="bill-grand-total">KES 6,700</td>
+                    <td class="py-3 px-3 text-right text-emerald-700" id="bill-sha-total">KES 5,100</td>
+                    <td class="py-3 pl-3 text-right text-base text-emerald-950" id="bill-patient-total">KES 1,600</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p class="text-xs text-slate-500">
+                Pay hospital co-pay directly via official eCitizen / SHA Paybill <span class="font-mono font-bold text-slate-700">222222</span> (No cash handling at wards).
+              </p>
+              <button onclick="simulateMpesaPrompt()"
+                class="shrink-0 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+                <span>Simulate M-Pesa STK Push (KES 250)</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN (5 cols): Live SHA & Hospital Readiness Checker -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <h2 class="text-base font-bold text-slate-900">Live Hospital Readiness &amp; SHA Checker</h2>
+              <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot"></span>
+                Live Desk Feed
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">
+              Verify active SHA contracting, ER wait times, and real-time drug/equipment availability before traveling.
+            </p>
+
+            <!-- Filter Bar -->
+            <div class="flex flex-wrap gap-2 mb-4">
+              <select id="facility-filter-need" onchange="renderFacilities()"
+                class="w-full sm:flex-1 text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:border-emerald-600">
+                <option value="all">Filter by Need: All Services</option>
+                <option value="insulin">Insulin &amp; Diabetes Stock</option>
+                <option value="xray">Working X-Ray / Imaging</option>
+                <option value="maternity">24/7 Maternity Theatre</option>
+                <option value="shaActive">SHA Contracting Active Only</option>
+              </select>
+            </div>
+
+            <!-- Facility Cards List -->
+            <div id="patient-facilities-list" class="space-y-3.5">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 2: HOSPITAL TRIAGE & DISCHARGE DESK (CLINICIAN / BILLING)        -->
+    <!-- ===================================================================== -->
+    <section id="view-hospital" class="hidden space-y-6">
+
+      <!-- Clinician Header Card -->
+      <div class="bg-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-semibold text-emerald-400 mb-1">
+            <span>LEVEL 4 COUNTY FACILITY DESK • Mbagathi County Hospital (Nairobi)</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold">Hospital Triage, Resource Board &amp; Discharge Builder</h1>
+          <p class="text-xs sm:text-sm text-slate-300 mt-1">
+            Broadcast live stock/equipment availability to prevent futile patient referrals, and push structured discharge plans to patients &amp; CHPs.
+          </p>
+        </div>
+        <div class="bg-slate-800/90 border border-slate-700 rounded-xl px-4 py-3 text-xs shrink-0">
+          <p class="text-slate-400">Logged-in Clinician</p>
+          <p class="font-bold text-white text-sm">Dr. Brian Ochieng, MO</p>
+          <p class="text-emerald-400 font-mono">KMPDC Reg: A10942</p>
+        </div>
+      </div>
+
+      <!-- Escalation Alert Banner (Visible when CHP escalates a patient) -->
+      <div id="hospital-escalation-banner" class="hidden bg-red-50 border-2 border-red-300 rounded-2xl p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 font-bold text-lg">!</div>
+            <div>
+              <span class="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white">Urgent CHP Field Escalation</span>
+              <h3 id="esc-title" class="text-base font-bold text-red-950 mt-1">Red-Flag Vitals Breach Reported</h3>
+              <p id="esc-details" class="text-xs sm:text-sm text-red-800 mt-0.5"></p>
+            </div>
+          </div>
+          <button onclick="acknowledgeEscalation()"
+            class="shrink-0 bg-red-700 hover:bg-red-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition">
+            Reserve Fast-Track ER Bed &amp; Notify CHP
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT (6 cols): Live Facility Resource & SHA Status Board -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-base font-bold text-slate-900">Real-Time Facility Resource &amp; Stock Control</h2>
+              <span class="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full">Syncs to Patient Portal</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">
+              Toggle availability below. Changes immediately update the public Patient Readiness Checker across Nairobi &amp; Kajiado.
+            </p>
+
+            <!-- Facility Selector for Editing -->
+            <div class="mb-4">
+              <label class="block text-xs font-bold text-slate-700 mb-1">Select Facility to Update</label>
+              <select id="hosp-facility-select" onchange="loadHospitalControlForm()"
+                class="w-full text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-emerald-700">
+              </select>
+            </div>
+
+            <div id="hosp-resource-controls" class="space-y-4">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT (6 cols): Patient Discharge & CHP Referral Builder -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-2">
+              <h2 class="text-base font-bold text-slate-900">Unified Discharge &amp; CHP Referral Builder</h2>
+              <span class="text-[11px] font-semibold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">Pushes to Patient + CHP</span>
+            </div>
+            <p class="text-xs text-slate-500 mb-4">
+              Generate a structured home-care plan for <strong class="text-slate-800">Mama Grace Wanjiku</strong> (or update her active regimen) and dispatch directly to her Ward CHP.
+            </p>
+
+            <form id="discharge-form" onsubmit="submitDischargePlan(event)" class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Patient Name &amp; SHA ID</label>
+                  <input type="text" id="form-pt-name" value="Mama Grace Wanjiku (KE-SHA-8841920)" required
+                    class="w-full text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Assign Ward CHP</label>
+                  <select id="form-chp-assign"
+                    class="w-full text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-800">
+                    <option value="CHP Esther Moraa (Kibra Laini Saba)">CHP Esther Moraa (Kibra Laini Saba)</option>
+                    <option value="CHP David Kamau (Embakasi West)">CHP David Kamau (Embakasi West)</option>
+                    <option value="CHP Faith Naserian (Kitengela Central)">CHP Faith Naserian (Kitengela Central)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Primary Discharge Diagnosis</label>
+                  <input type="text" id="form-diagnosis" value="Uncontrolled Type 2 Diabetes & Stage 2 Hypertension" required
+                    class="w-full text-xs sm:text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:border-emerald-700 focus:outline-none">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Outpatient Review Date</label>
+                  <input type="date" id="form-followup-date" value="2026-11-24" required
+                    class="w-full text-xs sm:text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:border-emerald-700 focus:outline-none">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Home Care &amp; Dietary Instructions</label>
+                <textarea id="form-notes" rows="2" required
+                  class="w-full text-xs sm:text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:border-emerald-700 focus:outline-none">Monitor fasting blood sugar every morning before breakfast. Take antihypertensive and oral hypoglycemic doses with meals. Reduce salt intake and drink 2L clean water daily.</textarea>
+              </div>
+
+              <!-- Add New Medication Row -->
+              <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">Add / Append Prescription Item (with KES Benchmark)</span>
+                  <span class="text-[11px] text-slate-500">Optional</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input type="text" id="new-med-name" placeholder="Drug (e.g. Atorvastatin 20mg)"
+                    class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2">
+                  <input type="text" id="new-med-dose" placeholder="Dosage (e.g. 1 tab Nocte)"
+                    class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2">
+                  <input type="number" id="new-med-price" placeholder="Fair Price KES (e.g. 450)"
+                    class="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2">
+                </div>
+              </div>
+
+              <button type="submit"
+                class="w-full bg-[#065f46] hover:bg-emerald-900 text-white font-bold text-sm py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <span>Publish Discharge Plan to Patient &amp; CHP Queue</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 3: CHP HOME FOLLOW-UP DASHBOARD (COMMUNITY HEALTH PROMOTER)      -->
+    <!-- ===================================================================== -->
+    <section id="view-chp" class="hidden space-y-6">
+
+      <!-- CHP Header & Offline Sync Simulator -->
+      <div class="bg-emerald-950 text-white rounded-2xl p-5 sm:p-6 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-semibold text-amber-400 mb-1">
+            <span>eCHIS-COMPATIBLE FIELD MODULE • CHU: Kibra Laini Saba (Ward 402)</span>
+          </div>
+          <h1 class="text-xl sm:text-2xl font-bold">CHP Esther Moraa — Post-Discharge Home Visit Queue</h1>
+          <p class="text-xs sm:text-sm text-emerald-100/80 mt-1">
+            Prioritized household follow-ups within 48–72 hours of hospital discharge. Works offline in low-connectivity zones and syncs to Level 4 clinicians.
+          </p>
+        </div>
+
+        <!-- Offline Mode & Sync Simulator Controls -->
+        <div class="bg-white/10 border border-white/15 rounded-xl p-3.5 flex flex-wrap items-center gap-3 shrink-0">
+          <div class="flex items-center gap-2">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="chp-offline-toggle" class="sr-only peer" onchange="toggleOfflineMode()">
+              <div class="w-10 h-5 bg-emerald-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500"></div>
+              <span id="offline-status-text" class="ml-2 text-xs font-bold text-emerald-200">Online (4G)</span>
+            </label>
+          </div>
+
+          <button onclick="syncOfflineQueue()" id="btn-sync-now"
+            class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold px-3.5 py-2 rounded-lg shadow transition flex items-center gap-1.5">
+            <span>Sync Now</span>
+            <span id="offline-queue-badge" class="bg-slate-950 text-white px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT (5 cols): Prioritized Household Visit Queue -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-base font-bold text-slate-900">Household Follow-Up Queue</h2>
+              <span class="text-xs font-semibold text-slate-500">Sorted by Clinical Risk</span>
+            </div>
+            <div id="chp-patient-queue" class="space-y-3">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT (7 cols): Interactive Home-Visit Vitals & Danger Sign Logger -->
+        <div class="lg:col-span-7 space-y-6">
+          <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-slate-100">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Active Household Visit</span>
+                <h2 id="chp-active-pt-name" class="text-lg font-bold text-slate-900">Mama Grace Wanjiku (Age 58)</h2>
+                <p id="chp-active-pt-meta" class="text-xs text-slate-500">Discharged from Mbagathi County Hospital • Uncontrolled Type 2 Diabetes &amp; HTN</p>
+              </div>
+              <span id="chp-active-risk-pill" class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900">
+                High Priority (48h Post-Discharge)
+              </span>
+            </div>
+
+            <form id="chp-vitals-form" onsubmit="submitChpVisit(event)" class="mt-4 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Systolic BP (mmHg)</label>
+                  <input type="number" id="vital-sys" value="148" min="60" max="260" required
+                    class="w-full text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:border-emerald-700 focus:outline-none">
+                  <span class="text-[11px] text-slate-400">Alert if &ge; 160 mmHg</span>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Diastolic BP (mmHg)</label>
+                  <input type="number" id="vital-dia" value="94" min="40" max="160" required
+                    class="w-full text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:border-emerald-700 focus:outline-none">
+                  <span class="text-[11px] text-slate-400">Alert if &ge; 100 mmHg</span>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Random Blood Sugar (mmol/L)</label>
+                  <input type="number" step="0.1" id="vital-rbs" value="9.8" min="1.0" max="35.0" required
+                    class="w-full text-sm font-semibold bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:border-emerald-700 focus:outline-none">
+                  <span class="text-[11px] text-slate-400">Alert if &lt; 3.8 or &gt; 14.0</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Medication Stock &amp; Adherence Check</label>
+                  <select id="vital-adherence"
+                    class="w-full text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800">
+                    <option value="Taking all meds; full 30-day stock available">Taking all meds; full stock available</option>
+                    <option value="Missed doses due to chemist stock-out / cost">Missed doses due to chemist stock-out / cost</option>
+                    <option value="Experiencing side effects; stopped tablets">Experiencing side effects; stopped tablets</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Danger Signs Observed at Home</label>
+                  <select id="vital-danger"
+                    class="w-full text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800">
+                    <option value="None">None — Alert, oriented, ambulating</option>
+                    <option value="Severe headache / chest pain / blurred vision">Severe headache / chest pain / blurred vision</option>
+                    <option value="Post-partum fever / heavy bleeding">Post-partum fever / heavy bleeding</option>
+                    <option value="Lethargy / confusion / persistent vomiting">Lethargy / confusion / persistent vomiting</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">CHP Field Notes</label>
+                <input type="text" id="vital-notes" placeholder="e.g., Verified SHA dependent card; counseled daughter on low-salt diet..."
+                  value="Checked glucometer strips; verified family understands morning insulin/metformin timing."
+                  class="w-full text-xs sm:text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900">
+              </div>
+
+              <div class="flex flex-col sm:flex-row gap-3 pt-1">
+                <button type="submit"
+                  class="flex-1 bg-[#065f46] hover:bg-emerald-900 text-white font-bold text-sm py-3 px-4 rounded-xl shadow transition">
+                  Log Home Visit &amp; Evaluate Thresholds
+                </button>
+                <button type="button" onclick="fillCriticalVitalsDemo()"
+                  class="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold text-xs py-3 px-4 rounded-xl border border-amber-300 transition">
+                  Simulate Critical BP/RBS Breach
+                </button>
+              </div>
+            </form>
+
+            <!-- Visit History Log -->
+            <div class="mt-6 pt-4 border-t border-slate-100">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">Recent CHP Field Logs</h3>
+              <div id="chp-visit-logs" class="space-y-2 text-xs">
+                <!-- Populated via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: 1-TAP ECCIF EMERGENCY RIGHTS CARD                            -->
+  <!-- ===================================================================== -->
+  <div id="eccif-card-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200 animate-fade-in">
+      <div class="bg-[#065f46] p-5 text-white flex items-center justify-between">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest bg-amber-500 text-slate-950 px-2 py-0.5 rounded">Republic of Kenya • SHA / ECCIF</span>
+          <h3 class="text-lg font-extrabold mt-1">Emergency &amp; Chronic Care Rights Pass</h3>
+        </div>
+        <button onclick="closeModal('eccif-card-modal')" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 space-y-4 text-sm">
+        <div class="bg-amber-50 border border-amber-300 rounded-xl p-3.5 text-amber-950">
+          <p class="font-bold text-xs uppercase tracking-wide mb-1">Statutory Emergency Stabilization Mandate</p>
+          <p class="text-xs leading-relaxed">
+            Under the <strong>Social Health Insurance Act (2023)</strong> &amp; the <strong>Emergency, Chronic and Critical Illness Fund (ECCIF)</strong>, no SHA-contracted public or private facility may deny emergency stabilization or demand upfront cash deposits before stabilizing a life-threatening emergency.
+          </p>
+        </div>
+
+        <div class="border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Beneficiary Name:</span>
+            <span class="font-bold text-slate-900">Grace Wanjiku Mwangi</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">SHA Number:</span>
+            <span class="font-mono font-bold text-emerald-800">KE-SHA-8841920</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">National ID:</span>
+            <span class="font-mono font-semibold text-slate-800">11482904</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Primary Level 2/3 Empanelment:</span>
+            <span class="font-semibold text-slate-800">Kibra South Health Centre</span>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 text-white rounded-xl p-3.5 flex items-center justify-between">
+          <div>
+            <p class="text-[11px] text-slate-400">SHA / MoH Dispute &amp; Emergency Escalation</p>
+            <p class="text-base font-extrabold text-amber-400 tracking-wide">0800 720 601 (Toll-Free)</p>
+          </div>
+          <button onclick="copyHotline()" class="bg-white/15 hover:bg-white/25 text-xs font-bold px-3 py-2 rounded-lg transition">
+            Copy Number
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: KENYAN HEALTHCARE RESEARCH & SYSTEM ARCHITECTURE BRIEF       -->
+  <!-- ===================================================================== -->
+  <div id="research-brief-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200">
+      <div class="bg-slate-900 p-5 text-white flex items-center justify-between shrink-0">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Systems Research &amp; Architectural Justification</span>
+          <h3 class="text-lg font-bold">Solving Kenya's Hospital-to-Home Continuity &amp; SHA Navigation Gap</h3>
+        </div>
+        <button onclick="closeModal('research-brief-modal')" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+        <div>
+          <h4 class="font-bold text-slate-900 text-sm mb-1">1. Core Problem Identified Across Kenyan Households &amp; Level 4/5 Hospitals</h4>
+          <p>
+            Patients across Nairobi, Kajiado, and county referral networks face a critical <strong>"Revolving-Door &amp; Blind-Referral Breakdown"</strong>:
+          </p>
+          <ul class="list-disc pl-5 mt-1.5 space-y-1">
+            <li><strong>At the Hospital Gate:</strong> Families spend scarce cash on transport only to encounter SHA contracting confusion, broken X-ray/lab equipment, or essential drug stock-outs—forcing out-of-pocket chemist purchases at inflated retail prices.</li>
+            <li><strong>At Home Post-Discharge:</strong> Paper discharge summaries are easily lost or misunderstood. Patients with chronic NCDs (hypertension, diabetes) or post-maternity needs miss danger signs at home, while Community Health Promoters (CHPs) lack real-time hospital discharge rosters—leading to preventable readmissions.</li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="font-bold text-slate-900 text-sm mb-1">2. How AfyaBridge Kenya Closes the Loop</h4>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>Pre-Travel Facility &amp; SHA Transparency:</strong> Real-time Level 4/5 resource status (SHA active flag, ER queue, insulin/X-ray/theatre readiness) plus an ECCIF statutory rights pass.</li>
+            <li><strong>Unified Discharge &amp; Fair Chemist Pricing:</strong> Clinicians push structured regimens directly to the patient's phone and assigned Ward CHP, complete with KES retail price benchmarks.</li>
+            <li><strong>Offline-Ready CHP Escalation Loop:</strong> CHPs log household vitals (BP, blood sugar) even offline and trigger instant red-flag alerts back to Level 4 triage desks when thresholds breach.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT APPLICATION STATE & INTERACTIVE CONTROLLERS                -->
+  <!-- ===================================================================== -->
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. CENTRALIZED REACTIVE APPLICATION STATE
+    // -------------------------------------------------------------------------
+    const appState = {
+      activeRole: 'patient',
+      offlineMode: false,
+      offlineQueue: [],
+      escalationAlert: null,
+
+      // Live Hospital Facilities (Shared between Hospital Desk & Patient Portal)
+      facilities: [
+        {
+          id: 'mbagathi',
+          name: 'Mbagathi County Hospital',
+          level: 'Level 4 • Nairobi (Lang\'ata / Kibra)',
+          shaActive: true,
+          waitMinutes: 35,
+          erStatus: 'Open — Moderate Flow',
+          insulinStock: true,
+          xrayWorking: true,
+          maternityTheatre: true,
+          lastUpdated: 'Just now'
+        },
+        {
+          id: 'mamalucy',
+          name: 'Mama Lucy Kibaki Hospital',
+          level: 'Level 5 • Nairobi (Embakasi West)',
+          shaActive: true,
+          waitMinutes: 55,
+          erStatus: 'Busy — High Maternity Load',
+          insulinStock: true,
+          xrayWorking: false, // Realistic operational issue
+          maternityTheatre: true,
+          lastUpdated: '6 mins ago'
+        },
+        {
+          id: 'kitengela',
+          name: 'Kitengela Sub-County Hospital',
+          level: 'Level 4 • Kajiado East',
+          shaActive: true,
+          waitMinutes: 25,
+          erStatus: 'Open — Fast Triage',
+          insulinStock: false, // Realistic stock-out alert
+          xrayWorking: true,
+          maternityTheatre: true,
+          lastUpdated: '12 mins ago'
+        },
+        {
+          id: 'coptic',
+          name: 'Coptic Hospital (Ngong Road)',
+          level: 'Level 4 Faith-Based • Nairobi',
+          shaActive: true,
+          waitMinutes: 20,
+          erStatus: 'Open — SHA Co-Pay Applies',
+          insulinStock: true,
+          xrayWorking: true,
+          maternityTheatre: true,
+          lastUpdated: '18 mins ago'
+        }
+      ],
+
+      // Active Patient Discharge Care Plan (Shared across Patient, Hospital, CHP)
+      dischargePlan: {
+        patientName: 'Mama Grace Wanjiku (KE-SHA-8841920)',
+        diagnosis: 'Uncontrolled Type 2 Diabetes & Stage 2 Hypertension',
+        assignedChp: 'CHP Esther Moraa (Kibra Laini Saba)',
+        followupDate: '2026-11-24',
+        notes: 'Monitor fasting blood sugar every morning before breakfast. Take antihypertensive and oral hypoglycemic doses with meals. Reduce salt intake (avoid adding raw salt to ugali/sukuma) and drink 2L clean water daily.',
+        medications: [
+          {
+            id: 'med-1',
+            name: 'Metformin Hydrochloride 500mg',
+            schedule: '1 tablet twice daily (Morning & Evening with meals)',
+            hospitalStock: '7-day starter pack issued',
+            fairChemistKes: 350,
+            takenToday: false
+          },
+          {
+            id: 'med-2',
+            name: 'Amlodipine 10mg',
+            schedule: '1 tablet once daily (8:00 AM)',
+            hospitalStock: 'Out of stock — Buy at Chemist',
+            fairChemistKes: 450,
+            takenToday: false
+          },
+          {
+            id: 'med-3',
+            name: 'Losartan Potassium 50mg',
+            schedule: '1 tablet once daily (8:00 AM)',
+            hospitalStock: 'Out of stock — Buy at Chemist',
+            fairChemistKes: 550,
+            takenToday: false
+          }
+        ]
+      },
+
+      // CHP Follow-up Queue
+      chpPatients: [
+        {
+          id: 'pt-grace',
+          name: 'Mama Grace Wanjiku (58F)',
+          village: 'Kibra — Laini Saba, Plot 14B',
+          phone: '0712 489 320',
+          condition: 'Type 2 Diabetes & Stage 2 HTN',
+          hospital: 'Mbagathi County Hospital',
+          priority: 'HIGH',
+          status: 'Pending 48h Home Visit',
+          lastVitals: 'Discharge BP: 152/96 • RBS: 11.4 mmol/L'
+        },
+        {
+          id: 'pt-akinyi',
+          name: 'Mercy Akinyi Odhiambo (26F)',
+          village: 'Kibra — Makina Mosque Rd',
+          phone: '0724 901 118',
+          condition: 'Post-CS Delivery + Pre-Eclampsia Watch',
+          hospital: 'Mbagathi County Hospital',
+          priority: 'URGENT',
+          status: 'Due Today (Day 3 Post-Op)',
+          lastVitals: 'Discharge BP: 144/92 • Wound clean'
+        },
+        {
+          id: 'pt-kamau',
+          name: 'Mzee Peter Kamau (67M)',
+          village: 'Kibra — Silanga Zone',
+          phone: '0733 612 045',
+          condition: 'Post-Pneumonia & Asthma Recovery',
+          hospital: 'Kenyatta National Hospital (KNH)',
+          priority: 'ROUTINE',
+          status: 'Scheduled Tomorrow',
+          lastVitals: 'SpO2: 96% on room air'
+        }
+      ],
+
+      activeChpPatientId: 'pt-grace',
+
+      chpVisitLogs: [
+        {
+          timestamp: 'Yesterday, 4:15 PM',
+          patient: 'Mercy Akinyi Odhiambo',
+          summary: 'BP 136/86 mmHg, surgical dressing dry & intact, baby breastfeeding well.',
+          status: 'Synced to Mbagathi'
+        }
+      ]
+    };
+
+    // -------------------------------------------------------------------------
+    // 2. ROLE-BASED ACCESS CONTROL (RBAC) VIEW SWITCHING
+    // -------------------------------------------------------------------------
+    function switchRole(role) {
+      appState.activeRole = role;
+
+      // Toggle sections
+      document.getElementById('view-patient').classList.toggle('hidden', role !== 'patient');
+      document.getElementById('view-hospital').classList.toggle('hidden', role !== 'hospital');
+      document.getElementById('view-chp').classList.toggle('hidden', role !== 'chp');
+
+      // Update Nav Buttons Styling
+      const roles = ['patient', 'hospital', 'chp'];
+      roles.forEach(r => {
+        const btn = document.getElementById(`btn-role-${r}`);
+        if (r === role) {
+          btn.className = 'role-btn flex-1 sm:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 bg-white text-emerald-950 shadow-sm';
+        } else {
+          btn.className = 'role-btn flex-1 sm:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 text-emerald-100 hover:bg-white/10';
+        }
+      });
+
+      // Update Context Strip
+      const roleLabel = document.getElementById('active-role-label');
+      const personaInfo = document.getElementById('active-persona-info');
+      if (role === 'patient') {
+        roleLabel.textContent = 'Active View: Patient & Family Navigation Portal';
+        personaInfo.textContent = `Patient: ${appState.dischargePlan.patientName} • Kibra / Lang'ata`;
+        renderPatientView();
+      } else if (role === 'hospital') {
+        roleLabel.textContent = 'Active View: Hospital Triage & Discharge Desk';
+        personaInfo.textContent = 'Clinician: Dr. Brian Ochieng (Mbagathi County Hospital — Level 4)';
+        renderHospitalView();
+      } else if (role === 'chp') {
+        roleLabel.textContent = 'Active View: Community Health Promoter (CHP) Field App';
+        personaInfo.textContent = 'CHP: Esther Moraa (CHU Kibra Laini Saba • eCHIS Linked)';
+        renderChpView();
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. PATIENT / FAMILY PORTAL RENDERING & INTERACTIONS
+    // -------------------------------------------------------------------------
+    function renderPatientView() {
+      const plan = appState.dischargePlan;
+      document.getElementById('pt-diagnosis-title').textContent = plan.diagnosis;
+      document.getElementById('pt-assigned-chp').textContent = plan.assignedChp;
+      document.getElementById('pt-followup-date').textContent = `Clinic Review: ${formatDateDisplay(plan.followupDate)}`;
+      document.getElementById('pt-clinician-notes').textContent = plan.notes;
+
+      // Render Medications + Fair Chemist Price Guide
+      const medsContainer = document.getElementById('patient-meds-list');
+      medsContainer.innerHTML = '';
+
+      let takenCount = 0;
+      let chemistTotal = 0;
+
+      plan.medications.forEach((med, idx) => {
+        if (med.takenToday) takenCount++;
+        if (med.hospitalStock.toLowerCase().includes('out of stock')) {
+          chemistTotal += Number(med.fairChemistKes || 0);
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-3.5 rounded-xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          med.takenToday ? 'bg-emerald-50/70 border-emerald-300' : 'bg-white border-slate-200'
+        }`;
+
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-bold text-sm text-slate-900">${escapeHtml(med.name)}</span>
+              <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                med.hospitalStock.toLowerCase().includes('out of stock')
+                  ? 'bg-amber-100 text-amber-900'
+                  : 'bg-emerald-100 text-emerald-800'
+              }">${escapeHtml(med.hospitalStock)}</span>
+            </div>
+            <p class="text-xs text-slate-600">${escapeHtml(med.schedule)}</p>
+            <p class="text-[11px] font-medium text-slate-500">
+              Fair Retail Chemist Benchmark: <strong class="text-slate-800">KES ${Number(med.fairChemistKes).toLocaleString()}</strong> (23-day pack)
+            </p>
+          </div>
+          <button onclick="toggleMedTaken(${idx})"
+            class="shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+              med.takenToday
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'bg-slate-100 hover:bg-emerald-100 text-slate-800 hover:text-emerald-900'
+            }">
+            <span>${med.takenToday ? '✓ Dose Taken Today' : 'Mark Dose Taken'}</span>
+          </button>
+        `;
+        medsContainer.appendChild(card);
+      });
+
+      document.getElementById('med-adherence-pill').textContent = `${takenCount} / ${plan.medications.length} Doses Taken Today`;
+
+      // Update Bill Estimator dynamically
+      const shaCovered = 5100;
+      const hospitalCopay = 250;
+      const patientTotal = hospitalCopay + chemistTotal;
+      const grandTotal = shaCovered + patientTotal;
+
+      document.getElementById('bill-chemist-total').textContent = `KES ${chemistTotal.toLocaleString()}`;
+      document.getElementById('bill-chemist-copay').textContent = `KES ${chemistTotal.toLocaleString()}`;
+      document.getElementById('bill-grand-total').textContent = `KES ${grandTotal.toLocaleString()}`;
+      document.getElementById('bill-patient-total').textContent = `KES ${patientTotal.toLocaleString()}`;
+
+      renderFacilities();
+    }
+
+    function toggleMedTaken(index) {
+      appState.dischargePlan.medications[index].takenToday = !appState.dischargePlan.medications[index].takenToday;
+      renderPatientView();
+      showToast('Medication adherence log updated for your home care record.', 'success');
+    }
+
+    function renderFacilities() {
+      const filter = document.getElementById('facility-filter-need').value;
+      const container = document.getElementById('patient-facilities-list');
+      container.innerHTML = '';
+
+      const filtered = appState.facilities.filter(f => {
+        if (filter === 'insulin') return f.insulinStock;
+        if (filter === 'xray') return f.xrayWorking;
+        if (filter === 'maternity') return f.maternityTheatre;
+        if (filter === 'shaActive') return f.shaActive;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-4 rounded-xl bg-slate-50 text-xs text-slate-500 text-center">No facilities match the selected filter right now.</div>`;
+        return;
+      }
+
+      filtered.forEach(fac => {
+        const card = document.createElement('div');
+        card.className = 'p-4 rounded-xl border border-slate-200 hover:border-emerald-400 transition bg-slate-50/50 space-y-2.5';
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <h3 class="font-bold text-sm text-slate-900">${escapeHtml(fac.name)}</h3>
+              <p class="text-xs text-slate-500">${escapeHtml(fac.level)}</p>
+            </div>
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold shrink-0 ${
+              fac.shaActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+            }">
+              ${fac.shaActive ? 'SHA Active' : 'SHA Offline'}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between text-xs bg-white px-3 py-2 rounded-lg border border-slate-200/80">
+            <span class="text-slate-600">Est. ER Triage Wait: <strong class="text-slate-900">${fac.waitMinutes} mins</strong></span>
+            <span class="text-[11px] text-slate-400">Updated ${escapeHtml(fac.lastUpdated)}</span>
+          </div>
+
+          <div class="flex flex-wrap gap-1.5 text-[11px] font-semibold">
+            <span class="px-2 py-0.5 rounded-md ${fac.insulinStock ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}">
+              ${fac.insulinStock ? '✓ Insulin in Stock' : '✕ Insulin Stock-Out'}
+            </span>
+            <span class="px-2 py-0.5 rounded-md ${fac.xrayWorking ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-900 border border-amber-200'}">
+              ${fac.xrayWorking ? '✓ X-Ray Working' : '⚠ X-Ray Under Repair'}
+            </span>
+            <span class="px-2 py-0.5 rounded-md ${fac.maternityTheatre ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'}">
+              ${fac.maternityTheatre ? '✓ Maternity Theatre' : '✕ Theatre Full'}
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function evaluateSymptoms() {
+      const checked = Array.from(document.querySelectorAll('.symptom-cb:checked')).map(cb => cb.value);
+      const resultBox = document.getElementById('symptom-result-box');
+
+      if (checked.length === 0) {
+        resultBox.className = 'mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between gap-3';
+        resultBox.innerHTML = '<span>No danger signs selected. Continue scheduled medications and routine CHP home check-in.</span>';
+        return;
+      }
+
+      resultBox.className = 'mt-3 p-4 rounded-xl bg-red-50 border-2 border-red-300 text-xs text-red-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+      resultBox.innerHTML = `
+        <div>
+          <p class="font-extrabold text-red-800 uppercase tracking-wide">⚠ Red-Flag Warning Detected (${checked.length} Symptom${checked.length > 1 ? 's' : ''})</p>
+          <p class="mt-0.5 text-red-900">Proceed immediately to <strong>Mbagathi County Hospital ER</strong> (35 min wait, SHA Active) or alert CHP Esther Moraa.</p>
+        </div>
+        <button onclick="patientTriggerChpAlert()" class="shrink-0 bg-red-700 hover:bg-red-800 text-white font-bold px-3.5 py-2 rounded-xl shadow">
+          Alert CHP &amp; Triage Desk
+        </button>
+      `;
+    }
+
+    function patientTriggerChpAlert() {
+      const checked = Array.from(document.querySelectorAll('.symptom-cb:checked')).map(cb => cb.value);
+      appState.escalationAlert = {
+        patient: appState.dischargePlan.patientName,
+        source: 'Patient Self-Reported Red-Flag Symptom Checker',
+        details: `Reported at home: ${checked.join('; ')}. Needs immediate Level 4 stabilization.`
+      };
+      showToast('Emergency symptom alert sent to CHP Esther Moraa & Mbagathi Triage Desk!', 'alert');
+    }
+
+    function simulateMpesaPrompt() {
+      showToast('M-Pesa STK Push sent to 0712 489 320 for KES 250 (eCitizen Paybill 222222).', 'success');
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. HOSPITAL TRIAGE & DISCHARGE DESK RENDERING & INTERACTIONS
+    // -------------------------------------------------------------------------
+    function renderHospitalView() {
+      // Check for active escalations from CHP or Patient
+      const escBanner = document.getElementById('hospital-escalation-banner');
+      if (appState.escalationAlert) {
+        escBanner.classList.remove('hidden');
+        document.getElementById('esc-title').textContent = `URGENT: ${appState.escalationAlert.patient} — ${appState.escalationAlert.source}`;
+        document.getElementById('esc-details').textContent = appState.escalationAlert.details;
+      } else {
+        escBanner.classList.add('hidden');
+      }
+
+      // Populate Facility Dropdown
+      const select = document.getElementById('hosp-facility-select');
+      const currentVal = select.value || appState.facilities[0].id;
+      select.innerHTML = appState.facilities.map(f => `<option value="${f.id}">${escapeHtml(f.name)} (${escapeHtml(f.level)})</option>`).join('');
+      select.value = currentVal;
+
+      loadHospitalControlForm();
+    }
+
+    function loadHospitalControlForm() {
+      const facId = document.getElementById('hosp-facility-select').value;
+      const fac = appState.facilities.find(f => f.id === facId);
+      if (!fac) return;
+
+      const container = document.getElementById('hosp-resource-controls');
+      container.innerHTML = `
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold text-slate-900">SHA Contracting &amp; Portal Verification</p>
+            <p class="text-xs text-slate-500">Show patients whether SHA claims are processing smoothly</p>
+          </div>
+          <input type="checkbox" ${fac.shaActive ? 'checked' : ''} onchange="updateFacilityField('${fac.id}', 'shaActive', this.checked)"
+            class="w-5 h-5 rounded text-emerald-700 focus:ring-emerald-600 cursor-pointer">
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold text-slate-900">Insulin &amp; Essential NCD Pharmacy Stock</p>
+            <p class="text-xs text-slate-500">Prevent diabetic patients traveling to empty pharmacy shelves</p>
+          </div>
+          <input type="checkbox" ${fac.insulinStock ? 'checked' : ''} onchange="updateFacilityField('${fac.id}', 'insulinStock', this.checked)"
+            class="w-5 h-5 rounded text-emerald-700 focus:ring-emerald-600 cursor-pointer">
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold text-slate-900">Radiology / X-Ray Machine Operational</p>
+            <p class="text-xs text-slate-500">Alert ambulance &amp; walk-in trauma cases before arrival</p>
+          </div>
+          <input type="checkbox" ${fac.xrayWorking ? 'checked' : ''} onchange="updateFacilityField('${fac.id}', 'xrayWorking', this.checked)"
+            class="w-5 h-5 rounded text-emerald-700 focus:ring-emerald-600 cursor-pointer">
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-bold text-slate-900">24/7 Emergency Maternity Theatre Open</p>
+            <p class="text-xs text-slate-500">Critical for high-risk Linda Mama / SHA maternity referrals</p>
+          </div>
+          <input type="checkbox" ${fac.maternityTheatre ? 'checked' : ''} onchange="updateFacilityField('${fac.id}', 'maternityTheatre', this.checked)"
+            class="w-5 h-5 rounded text-emerald-700 focus:ring-emerald-600 cursor-pointer">
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+            <span>Current ER / Outpatient Triage Wait Time</span>
+            <span class="text-emerald-800">${fac.waitMinutes} Minutes</span>
+          </div>
+          <input type="range" min="10" max="120" step="5" value="${fac.waitMinutes}"
+            oninput="updateFacilityField('${fac.id}', 'waitMinutes', Number(this.value))"
+            class="w-full accent-emerald-700 cursor-pointer">
+        </div>
+      `;
+    }
+
+    function updateFacilityField(facId, field, value) {
+      const fac = appState.facilities.find(f => f.id === facId);
+      if (!fac) return;
+      fac[field] = value;
+      fac.lastUpdated = 'Just now';
+      loadHospitalControlForm();
+      showToast(`Live status updated for ${fac.name}. Reflected in Patient Portal.`, 'success');
+    }
+
+    function submitDischargePlan(event) {
+      event.preventDefault();
+      appState.dischargePlan.patientName = document.getElementById('form-pt-name').value.trim();
+      appState.dischargePlan.assignedChp = document.getElementById('form-chp-assign').value;
+      appState.dischargePlan.diagnosis = document.getElementById('form-diagnosis').value.trim();
+      appState.dischargePlan.followupDate = document.getElementById('form-followup-date').value;
+      appState.dischargePlan.notes = document.getElementById('form-notes').value.trim();
+
+      // Optional new medication
+      const newMedName = document.getElementById('new-med-name').value.trim();
+      const newMedDose = document.getElementById('new-med-dose').value.trim();
+      const newMedPrice = Number(document.getElementById('new-med-price').value);
+
+      if (newMedName && newMedDose) {
+        appState.dischargePlan.medications.push({
+          id: 'med-' + Date.now(),
+          name: newMedName,
+          schedule: newMedDose,
+          hospitalStock: 'Out of stock — Buy at Chemist',
+          fairChemistKes: newMedPrice > 0 ? newMedPrice : 400,
+          takenToday: false
+        });
+        document.getElementById('new-med-name').value = '';
+        document.getElementById('new-med-dose').value = '';
+        document.getElementById('new-med-price').value = '';
+      }
+
+      // Also sync condition in CHP queue
+      const graceEntry = appState.chpPatients.find(p => p.id === 'pt-grace');
+      if (graceEntry) {
+        graceEntry.condition = appState.dischargePlan.diagnosis;
+        graceEntry.status = 'Updated Discharge Plan Received';
+      }
+
+      showToast('Structured Discharge Plan published to Patient Portal & CHP Queue!', 'success');
+    }
+
+    function acknowledgeEscalation() {
+      appState.escalationAlert = null;
+      renderHospitalView();
+      showToast('Fast-Track ER Bay #2 reserved at Mbagathi. SMS dispatched to CHP Esther Moraa.', 'success');
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. CHP HOME FOLLOW-UP DASHBOARD RENDERING & INTERACTIONS
+    // -------------------------------------------------------------------------
+    function renderChpView() {
+      const queueContainer = document.getElementById('chp-patient-queue');
+      queueContainer.innerHTML = '';
+
+      appState.chpPatients.forEach(pt => {
+        const isSelected = pt.id === appState.activeChpPatientId;
+        const badgeColor =
+          pt.priority === 'URGENT'
+            ? 'bg-red-100 text-red-800'
+            : pt.priority === 'HIGH'
+            ? 'bg-amber-100 text-amber-900'
+            : 'bg-slate-100 text-slate-700';
+
+        const card = document.createElement('div');
+        card.onclick = () => selectChpPatient(pt.id);
+        card.className = `p-3.5 rounded-xl border cursor-pointer transition space-y-1.5 ${
+          isSelected ? 'bg-emerald-50/80 border-emerald-600 ring-1 ring-emerald-600' : 'bg-white border-slate-200 hover:border-emerald-400'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-sm text-slate-900">${escapeHtml(pt.name)}</span>
+            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${badgeColor}">${escapeHtml(pt.priority)}</span>
+          </div>
+          <p class="text-xs font-medium text-emerald-900">${escapeHtml(pt.condition)}</p>
+          <p class="text-[11px] text-slate-500">${escapeHtml(pt.village)} • Tel: ${escapeHtml(pt.phone)}</p>
+          <div class="pt-1 flex items-center justify-between text-[11px] border-t border-slate-100">
+            <span class="text-slate-500">${escapeHtml(pt.lastVitals)}</span>
+            <span class="font-semibold text-emerald-700">${escapeHtml(pt.status)}</span>
+          </div>
+        `;
+        queueContainer.appendChild(card);
+      });
+
+      // Update Active Patient Header in Logger
+      const activePt = appState.chpPatients.find(p => p.id === appState.activeChpPatientId) || appState.chpPatients[0];
+      document.getElementById('chp-active-pt-name').textContent = activePt.name;
+      document.getElementById('chp-active-pt-meta').textContent = `Discharged from ${activePt.hospital} • ${activePt.condition}`;
+      document.getElementById('chp-active-risk-pill').textContent = `${activePt.priority} Priority (${activePt.status})`;
+
+      // Render Logs
+      const logsContainer = document.getElementById('chp-visit-logs');
+      logsContainer.innerHTML = appState.chpVisitLogs
+        .map(
+          log => `
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <p class="font-bold text-slate-800">${escapeHtml(log.patient)} <span class="font-normal text-slate-400">(${escapeHtml(log.timestamp)})</span></p>
+            <p class="text-slate-600 mt-0.5">${escapeHtml(log.summary)}</p>
+          </div>
+          <span class="shrink-0 text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+            log.status.includes('Queued') ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-800'
+          }">${escapeHtml(log.status)}</span>
+        </div>
+      `
+        )
+        .join('');
+
+      document.getElementById('offline-queue-badge').textContent = appState.offlineQueue.length;
+    }
+
+    function selectChpPatient(ptId) {
+      appState.activeChpPatientId = ptId;
+      renderChpView();
+    }
+
+    function toggleOfflineMode() {
+      appState.offlineMode = document.getElementById('chp-offline-toggle').checked;
+      const label = document.getElementById('offline-status-text');
+      if (appState.offlineMode) {
+        label.textContent = 'Offline Mode (Local Cache)';
+        label.className = 'ml-2 text-xs font-bold text-amber-300';
+        showToast('Offline Mode enabled. Field visits will queue locally until network returns.', 'info');
+      } else {
+        label.textContent = 'Online (4G)';
+        label.className = 'ml-2 text-xs font-bold text-emerald-200';
+        showToast('Back online! Click "Sync Now" if you have queued offline records.', 'success');
+      }
+    }
+
+    function fillCriticalVitalsDemo() {
+      document.getElementById('vital-sys').value = 178;
+      document.getElementById('vital-dia').value = 112;
+      document.getElementById('vital-rbs').value = 16.4;
+      document.getElementById('vital-danger').value = 'Severe headache / chest pain / blurred vision';
+      showToast('Critical BP (178/112) & RBS (16.4) loaded. Submit visit to test escalation!', 'info');
+    }
+
+    function submitChpVisit(event) {
+      event.preventDefault();
+      const activePt = appState.chpPatients.find(p => p.id === appState.activeChpPatientId);
+      const sys = Number(document.getElementById('vital-sys').value);
+      const dia = Number(document.getElementById('vital-dia').value);
+      const rbs = Number(document.getElementById('vital-rbs').value);
+      const adherence = document.getElementById('vital-adherence').value;
+      const danger = document.getElementById('vital-danger').value;
+      const notes = document.getElementById('vital-notes').value.trim();
+
+      const isCritical = sys >= 160 || dia >= 100 || rbs < 3.8 || rbs > 14.0 || danger !== 'None';
+      const summaryText = `BP ${sys}/${dia} mmHg, RBS ${rbs} mmol/L • Danger: ${danger}. ${notes}`;
+
+      // Update patient card in queue
+      activePt.lastVitals = `Home BP: ${sys}/${dia} • RBS: ${rbs}`;
+      activePt.status = isCritical ? 'ESCALATED TO LEVEL 4 ER' : 'Home Visit Completed';
+      if (isCritical) activePt.priority = 'URGENT';
+
+      const logEntry = {
+        timestamp: 'Just now',
+        patient: activePt.name,
+        summary: summaryText,
+        status: appState.offlineMode ? 'Queued Offline (Pending Sync)' : isCritical ? 'Escalated to Mbagathi ER' : 'Synced to Level 4'
+      };
+
+      if (appState.offlineMode) {
+        appState.offlineQueue.push({ logEntry, isCritical, activePt, summaryText });
+        showToast('Saved offline to local device storage. Tap "Sync Now" when connected.', 'info');
+      } else {
+        if (isCritical) {
+          appState.escalationAlert = {
+            patient: activePt.name,
+            source: 'CHP Esther Moraa (Field Vitals Threshold Breach)',
+            details: `${summaryText} — Adherence: ${adherence}`
+          };
+          showToast('CRITICAL VITALS BREACH! Instant escalation alert sent to Hospital Triage Desk.', 'alert');
+        } else {
+          showToast('Home visit logged & synced with Mbagathi County Hospital.', 'success');
+        }
+      }
+
+      appState.chpVisitLogs.unshift(logEntry);
+      renderChpView();
+    }
+
+    function syncOfflineQueue() {
+      if (appState.offlineMode) {
+        showToast('Switch off Offline Mode first to transmit queued visits.', 'alert');
+        return;
+      }
+      if (appState.offlineQueue.length === 0) {
+        showToast('All CHP household records are already up to date.', 'info');
+        return;
+      }
+
+      let hadCritical = false;
+      appState.offlineQueue.forEach(item => {
+        item.logEntry.status = item.isCritical ? 'Escalated to Mbagathi ER' : 'Synced to Level 4';
+        if (item.isCritical) {
+          hadCritical = true;
+          appState.escalationAlert = {
+            patient: item.activePt.name,
+            source: 'CHP Esther Moraa (Synced Offline Escalation)',
+            details: item.summaryText
+          };
+        }
+      });
+
+      const count = appState.offlineQueue.length;
+      appState.offlineQueue = [];
+      renderChpView();
+
+      if (hadCritical) {
+        showToast(`Synced ${count} record(s) — CRITICAL escalation flagged at Hospital Desk!`, 'alert');
+      } else {
+        showToast(`Successfully synced ${count} offline household visit(s) to Level 4 server.`, 'success');
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. UTILITIES, MODALS & NON-BLOCKING TOASTS
+    // -------------------------------------------------------------------------
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function copyHotline() {
+      const tempInput = document.createElement('input');
+      tempInput.value = '0800 720 601';
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      showToast('SHA Toll-Free Hotline (0800 720 601) copied to clipboard.', 'success');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colors =
+        type === 'alert'
+          ? 'bg-red-800 text-white border-red-600'
+          : type === 'success'
+          ? 'bg-emerald-900 text-white border-emerald-700'
+          : 'bg-slate-900 text-white border-slate-700';
+
+      toast.className = `pointer-events-auto border px-4 py-3 rounded-xl shadow-lg text-xs font-medium leading-snug transition-all ${colors}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 4200);
+    }
+
+    function formatDateDisplay(isoStr) {
+      if (!isoStr) return '24 Nov 2026';
+      const d = new Date(isoStr + 'T00:00:00');
+      return d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Initialize App on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderPatientView();
+      renderHospitalView();
+      renderChpView();
+    });
+  </script>
+</body>
+</html>
